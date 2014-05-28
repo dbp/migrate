@@ -90,7 +90,8 @@ main = do (cfg, _) <- autoReload autoConfig [Required "devel.cfg"]
 
 runMigration :: String -> String -> [(String,String)] -> FilePath -> String -> IO ()
 runMigration mode ghcargs env dir p =
-  do (_,_,_,h) <- createProcess $ (shell ("/home/dbp/.cabal/bin/cabal exec runghc -- " ++ ghcargs ++ " " ++ dir ++ "/" ++ p ++ ".hs"))
-                                     { env = Just (env ++ [("MIGRATION_NAME", p)
-                                                          ,("MIGRATION_MODE", mode)])}
+  do home <- fromJust <$> getEnv "HOME"
+     (_,_,_,h) <- createProcess $ (shell (home ++ "/.cabal/bin/cabal exec runghc -- " ++ ghcargs ++ " " ++ dir ++ "/" ++ p ++ ".hs"))
+                                                { env = Just (env ++ [("MIGRATION_NAME", p)
+                                                                     ,("MIGRATION_MODE", mode)])}
      void $ waitForProcess h

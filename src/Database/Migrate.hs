@@ -20,6 +20,7 @@ data Env = Env { unConn :: Connection, unTable :: String }
 
 type MigrateT m a = ReaderT Env m a
 
+-- NOTE(dbp 2014-05-28): We're using environment variables to configure libpq.
 getEnvSettings :: IO Env
 getEnvSettings = do conn <- connectPostgreSQL ""
                     t <- fromMaybe "migrations" <$> getEnv "PGTABLE"
