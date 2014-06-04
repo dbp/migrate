@@ -16,7 +16,7 @@ import System.Posix.Env (getEnv)
 import Data.Configurator (autoReload, autoConfig, Worth (Required), lookupDefault, require)
 
 -- Directory manipulations
-import System.Directory (getDirectoryContents)
+import System.Directory (getDirectoryContents, doesFileExist)
 
 -- Running shell commands
 import System.Process (createProcess, shell, waitForProcess, CreateProcess(..))
@@ -91,7 +91,13 @@ main = do (cfg, _) <- autoReload autoConfig [Required "devel.cfg"]
 runMigration :: String -> String -> [(String,String)] -> FilePath -> String -> IO ()
 runMigration mode ghcargs env dir p =
   do home <- fromJust <$> getEnv "HOME"
-     (_,_,_,h) <- createProcess $ (shell (home ++ "/.cabal/bin/cabal exec runghc -- " ++ ghcargs ++ " " ++ dir ++ "/" ++ p ++ ".hs"))
-                                                { env = Just (env ++ [("MIGRATION_NAME", p)
-                                                                     ,("MIGRATION_MODE", mode)])}
+     -- NOTE(dbp 2014-06-04): If a binary exists, just run it. Else, runghc the source.
+     exists <- doesFileExist (dir ++ "/" ++ p)
+     let command = if exists
+                      then "./" ++ dir ++ "/" ++ p
+                      else home ++ "/.cabal/bin/cabal exec runghc -- " ++
+                           ghcargs ++ " " ++ dir ++ "/" ++ p ++ ".hs"
+     (_,_,_,h) <- createProcess $ (shell command)
+                                  { env = Just (env ++ [("MIGRATION_NAME", p)
+                                                       ,("MIGRATION_MODE", mode)])}
      void $ waitForProcess h
