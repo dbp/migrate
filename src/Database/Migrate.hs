@@ -66,3 +66,25 @@ down migration =
                                            t ++ " WHERE name = ?") (Only nm)
                 liftIO $ putStrLn $ "Reverted migration: " ++ nm
             else liftIO $ putStrLn $ "Reverting migration failed: " ++ nm
+
+
+upSql :: (Functor m, MonadIO m) => String -> MigrateT m ()
+upSql sql = do upMode <- liftIO $ (== Just "up") <$> getEnv "MIGRATION_MODE"
+               nm <- liftIO $ fromJust <$> getEnv "MIGRATION_NAME"
+               when upMode $
+                 do (Env c t) <- ask
+                    liftIO $ execute_ c (fromString sql)
+                    void $ liftIO $ execute c (fromString $ "INSERT INTO " ++
+                                               t ++ " (name) values (?)") (Only nm)
+                    liftIO $ putStrLn $ "Applied migration: " ++ nm
+
+
+downSql :: (Functor m, MonadIO m) => String -> MigrateT m ()
+downSql sql = do downMode <- liftIO $ (== Just "down") <$> getEnv "MIGRATION_MODE"
+                 nm <- liftIO $ fromJust <$> getEnv "MIGRATION_NAME"
+                 when downMode $
+                   do (Env c t) <- ask
+                      liftIO $ execute_ c (fromString sql)
+                      void $ liftIO $ execute c (fromString $ "DELETE FROM " ++
+                                                 t ++ " WHERE name = ?") (Only nm)
+                      liftIO $ putStrLn $ "Reverted migration: " ++ nm
