@@ -34,8 +34,7 @@ executable migrate
   build-depends:
       base >= 4 && <= 5
     , migrate
-    -- transitive, as aeson is currently broken with newest scientific
-    , scientific < 0.3
+    , scientific
     , configurator
     , process
     , postgresql-simple
