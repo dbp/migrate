@@ -2,30 +2,33 @@
 module Main where
 
 -- Base types
-import Control.Applicative
-import Control.Monad (mapM_, filterM, void)
-import Data.List (sort, isSuffixOf)
-import Data.String (fromString)
-import Data.Maybe (fromJust)
+import           Control.Applicative
+import           Control.Monad              (filterM, mapM_, void)
+import           Data.List                  (isSuffixOf, sort)
+import           Data.Maybe                 (fromJust)
+import           Data.String                (fromString)
 
 -- Commandline processing
-import System.Environment (getArgs)
-import System.Posix.Env (getEnv)
+import           System.Environment         (getArgs)
+import           System.Posix.Env           (getEnv)
 
 -- Config file parsing
-import Data.Configurator (autoReload, autoConfig, Worth (Required), lookupDefault, require)
+import           Data.Configurator          (Worth (Required), autoConfig,
+                                             autoReload, lookupDefault, require)
 
 -- Directory manipulations
-import System.Directory (getDirectoryContents, doesFileExist)
+import           System.Directory           (doesFileExist,
+                                             getDirectoryContents)
 
 -- Running shell commands
-import System.Process (createProcess, shell, waitForProcess, CreateProcess(..))
+import           System.Process             (CreateProcess (..), createProcess,
+                                             shell, waitForProcess)
 
 -- Database connections
-import Database.PostgreSQL.Simple
+import           Database.PostgreSQL.Simple
 
 -- Library code
-import Database.Migrate
+import           Database.Migrate
 
 data DBType = PG
 
@@ -90,12 +93,11 @@ main = do (cfg, _) <- autoReload autoConfig [Required "devel.cfg"]
 
 runMigration :: String -> String -> [(String,String)] -> FilePath -> String -> IO ()
 runMigration mode ghcargs env dir p =
-  do home <- fromJust <$> getEnv "HOME"
-     -- NOTE(dbp 2014-06-04): If a binary exists, just run it. Else, runghc the source.
+  do -- NOTE(dbp 2014-06-04): If a binary exists, just run it. Else, runghc the source.
      exists <- doesFileExist (dir ++ "/" ++ p)
      let command = if exists
                       then "./" ++ dir ++ "/" ++ p
-                      else home ++ "/.cabal/bin/cabal exec runghc -- " ++
+                      else "cabal exec runghc -- " ++
                            ghcargs ++ " " ++ dir ++ "/" ++ p ++ ".hs"
      (_,_,_,h) <- createProcess $ (shell command)
                                   { env = Just (env ++ [("MIGRATION_NAME", p)
