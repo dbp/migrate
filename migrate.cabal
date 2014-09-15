@@ -1,5 +1,5 @@
 name:                migrate
-version:             0.1.0.0
+version:             0.1.1.0
 synopsis:            A database migrations library for haskell.
 homepage:            https://github.com/dbp/migrate
 license:             GPL-3
