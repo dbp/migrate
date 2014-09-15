@@ -79,11 +79,11 @@ main = do args <- getArgs
               case toDown of
                 (x:xs) -> runMigration "down" appenv ghcargs env dir x
                 _ -> putStrLn "No migrations remaining."
-            "status" -> mapM (\m -> do ne <- notExists typ table conn m
-                                       if ne
-                                          then putStrLn $ m ++ " in " ++ appenv
-                                          else putStrLn $ m ++ " in " ++ appenv ++ " APPLIED")
-                             migrations
+            "status" -> mapM_ (\m -> do ne <- notExists typ table conn m
+                                        if ne
+                                           then putStrLn $ m ++ " in " ++ appenv
+                                           else putStrLn $ m ++ " in " ++ appenv ++ " APPLIED")
+                              migrations
   where stripSuffix = reverse . drop 3 . reverse
         isCode = isSuffixOf ".hs"
         notExists PG tb c m =
