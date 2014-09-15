@@ -82,7 +82,7 @@ main = do args <- getArgs
             "status" -> mapM_ (\m -> do ne <- notExists typ table conn m
                                         if ne
                                            then putStrLn $ m ++ " in " ++ appenv
-                                           else putStrLn $ m ++ " in " ++ appenv ++ " APPLIED")
+                                           else putStrLn $ " APPLIED " ++ m ++ " in " ++ appenv)
                               migrations
   where stripSuffix = reverse . drop 3 . reverse
         isCode = isSuffixOf ".hs"
