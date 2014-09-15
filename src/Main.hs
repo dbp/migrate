@@ -33,7 +33,12 @@ import           Database.Migrate
 data DBType = PG
 
 main :: IO ()
-main = do (cfg, _) <- autoReload autoConfig [Required "devel.cfg"]
+main = do args <- getArgs
+          let appenv = case length args of
+                         2 -> head (tail args)
+                         1 -> "devel"
+                         _ -> error "usage: migrate [up|down] (devel|test|otherenv)"
+          (cfg, _) <- autoReload autoConfig [Required (appenv ++ ".cfg")]
           dir <- lookupDefault "migrations" cfg "migrate-directory"
           table <- lookupDefault "migrations" cfg "migrate-table"
           dbtype <- lookupDefault "postgresql" cfg "migrate-database-type" :: IO String
@@ -62,22 +67,18 @@ main = do (cfg, _) <- autoReload autoConfig [Required "devel.cfg"]
                                   where createTable = "CREATE TABLE IF NOT EXISTS " ++ table ++
                                                       " (name text NOT NULL PRIMARY KEY)"
           migrations <- sort . map stripSuffix . filter isCode <$> getDirectoryContents dir
-          args <- getArgs
-          case length args of
-            1 -> do let mode = head args
-                    case mode of
-                      "up" -> do
-                        missing <- filterM (notExists typ table conn) migrations
-                        if null missing
-                           then putStrLn "No migrations to run."
-                           else mapM_ (runMigration "up" ghcargs env dir) missing
-                      "down" -> do
-                        toDown <- dropWhileM (notExists typ table conn) $ reverse migrations
-                        case toDown of
-                          (x:xs) -> runMigration "down" ghcargs env dir x
-                          _ -> putStrLn "No migrations remaining."
-            _ -> putStrLn "usage: migrate [up|down]"
-
+          let mode = head args
+          case mode of
+            "up" -> do
+              missing <- filterM (notExists typ table conn) migrations
+              if null missing
+                 then putStrLn "No migrations to run."
+                 else mapM_ (runMigration "up" appenv ghcargs env dir) missing
+            "down" -> do
+              toDown <- dropWhileM (notExists typ table conn) $ reverse migrations
+              case toDown of
+                (x:xs) -> runMigration "down" appenv ghcargs env dir x
+                _ -> putStrLn "No migrations remaining."
   where stripSuffix = reverse . drop 3 . reverse
         isCode = isSuffixOf ".hs"
         notExists PG tb c m =
@@ -91,8 +92,8 @@ main = do (cfg, _) <- autoReload autoConfig [Required "devel.cfg"]
                                     then dropWhileM f xs
                                     else return (x:xs)
 
-runMigration :: String -> String -> [(String,String)] -> FilePath -> String -> IO ()
-runMigration mode ghcargs env dir p =
+runMigration :: String -> String -> String -> [(String,String)] -> FilePath -> String -> IO ()
+runMigration mode appenv ghcargs env dir p =
   do -- NOTE(dbp 2014-06-04): If a binary exists, just run it. Else, runghc the source.
      exists <- doesFileExist (dir ++ "/" ++ p)
      let command = if exists
@@ -101,5 +102,6 @@ runMigration mode ghcargs env dir p =
                            ghcargs ++ " " ++ dir ++ "/" ++ p ++ ".hs"
      (_,_,_,h) <- createProcess $ (shell command)
                                   { env = Just (env ++ [("MIGRATION_NAME", p)
+                                                       ,("MIGRATION_APPENV", appenv)
                                                        ,("MIGRATION_MODE", mode)])}
      void $ waitForProcess h
