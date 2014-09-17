@@ -54,7 +54,7 @@ main = do args <- getArgs
                                    dbname <- require cfg "migrate-database-name"
                                    dbhost <- lookup cfg "migrate-database-host"
                                    dbport <- lookup cfg "migrate-database-port"
-                                   c <- connectPostgreSQL (fromString $ "user='" ++ dbname ++ "' password='" ++ dbpass ++ "' dbname='" ++ dbname ++ "'" ++ maybe "" (\h -> " host='" ++ h ++ "'") dbhost ++ maybe "" (\p -> " port='" ++ p ++ "'") dbport)
+                                   c <- connectPostgreSQL (fromString $ "user='" ++ dbuser ++ "' password='" ++ dbpass ++ "' dbname='" ++ dbname ++ "'" ++ maybe "" (\h -> " host='" ++ h ++ "'") dbhost ++ maybe "" (\p -> " port='" ++ p ++ "'") dbport)
                                    execute_ c (fromString createTable)
                                    -- NOTE(dbp 2014-05-28): To appease cabal, so we can use sandboxes.
                                    home <- fromJust <$> getEnv "HOME"
