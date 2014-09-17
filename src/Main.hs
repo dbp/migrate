@@ -1,5 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 module Main where
+
+import           Prelude                    hiding (lookup)
 
 -- Base types
 import           Control.Applicative
@@ -14,7 +17,8 @@ import           System.Posix.Env           (getEnv)
 
 -- Config file parsing
 import           Data.Configurator          (Worth (Required), autoConfig,
-                                             autoReload, lookupDefault, require)
+                                             autoReload, lookup, lookupDefault,
+                                             require)
 
 -- Directory manipulations
 import           System.Directory           (doesFileExist,
@@ -48,21 +52,21 @@ main = do args <- getArgs
                                 do dbuser <- require cfg "migrate-database-user"
                                    dbpass <- require cfg "migrate-database-password"
                                    dbname <- require cfg "migrate-database-name"
-                                   dbhost <- lookupDefault "127.0.0.1" cfg "migrate-database-host"
-                                   dbport <- lookupDefault 5432 cfg "migrate-database-port"
-                                   c <- connect (ConnectInfo dbhost dbport dbuser dbpass dbname)
+                                   dbhost <- lookup cfg "migrate-database-host"
+                                   dbport <- lookup cfg "migrate-database-port"
+                                   c <- connectPostgreSQL (fromString $ "user='" ++ dbname ++ "' password='" ++ dbpass ++ "' dbname='" ++ dbname ++ "'" ++ maybe "" (\h -> " host='" ++ h ++ "'") dbhost ++ maybe "" (\p -> " port='" ++ p ++ "'") dbport)
                                    execute_ c (fromString createTable)
                                    -- NOTE(dbp 2014-05-28): To appease cabal, so we can use sandboxes.
                                    home <- fromJust <$> getEnv "HOME"
                                    path <- fromJust <$> getEnv "PATH"
-                                   let env = [("PGHOST", dbhost)
-                                             ,("PGPORT", show dbport)
-                                             ,("PGDATABASE", dbname)
+                                   let env = [("PGDATABASE", dbname)
                                              ,("PGUSER", dbuser)
                                              ,("PGPASSWORD", dbpass)
                                              ,("PGTABLE", table)
                                              ,("HOME", home)
-                                             ,("PATH", path)]
+                                             ,("PATH", path)] ++
+                                             maybe [] ((:[]) . ("PGHOST", )) dbhost ++
+                                             maybe [] ((:[]) . ("PGPORT", ) . show) dbport
                                    return (c, PG, env)
                                   where createTable = "CREATE TABLE IF NOT EXISTS " ++ table ++
                                                       " (name text NOT NULL PRIMARY KEY)"
